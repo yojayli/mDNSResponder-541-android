@@ -22,6 +22,11 @@
 
  */
 
+#ifdef TARGET_OS_ANDROID
+#include <sys/socket.h>
+#include <sys/un.h>
+#endif
+
 #include "mDNSEmbeddedAPI.h"
 #include "dnssd_ipc.h"
 

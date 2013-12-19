@@ -27,6 +27,10 @@
 #include "DNSCommon.h"
 #include "PlatformCommon.h"
 
+#ifdef TARGET_OS_ANDROID
+#include <android/log.h>
+#endif
+
 #ifdef NOT_HAVE_SOCKLEN_T
 typedef unsigned int socklen_t;
 #endif
@@ -143,13 +147,21 @@ badf:
 #if MDNS_DEBUGMSGS
 mDNSexport void mDNSPlatformWriteDebugMsg(const char *msg)
 {
+#ifdef TARGET_OS_ANDROID
+    __android_log_print(ANDROID_LOG_DEBUG, "bonjour", "%s", msg);
+#else
     fprintf(stderr,"%s\n", msg);
     fflush(stderr);
+#endif
 }
 #endif
 
 mDNSexport void mDNSPlatformWriteLogMsg(const char *ident, const char *buffer, mDNSLogLevel_t loglevel)
 {
+#ifdef TARGET_OS_ANDROID
+  __android_log_print(ANDROID_LOG_DEBUG, "bonjour", "%s", buffer);
+#else
+  
 #if APPLE_OSX_mDNSResponder && LogTimeStamps
     extern mDNS mDNSStorage;
     extern mDNSu32 mDNSPlatformClockDivisor;
@@ -196,4 +208,5 @@ mDNSexport void mDNSPlatformWriteLogMsg(const char *ident, const char *buffer, m
         syslog(syslog_level, "%s", buffer);
 #endif
     }
+#endif
 }

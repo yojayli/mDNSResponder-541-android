@@ -1327,6 +1327,10 @@ enum
     McastResolver_FlagNew    = 2
 };
 
+#ifdef _MSC_VER
+#undef interface
+#endif
+
 typedef struct McastResolver
 {
     struct McastResolver *next;

@@ -1181,6 +1181,7 @@ mDNSexport mStatus mDNS_Register_internal(mDNS *const m, AuthRecord *const rr)
     AuthRecord *r;
     AuthRecord **p = &m->ResourceRecords;
     AuthRecord **d = &m->DuplicateRecords;
+	mDNSAddr   raddr;
 
     if ((mDNSs32)rr->resrec.rroriginalttl <= 0)
     { LogMsg("mDNS_Register_internal: TTL %X should be 1 - 0x7FFFFFFF %s", rr->resrec.rroriginalttl, ARDisplayString(m, rr)); return(mStatus_BadParamErr); }
@@ -1478,7 +1479,6 @@ mDNSexport mStatus mDNS_Register_internal(mDNS *const m, AuthRecord *const rr)
         // Also make sure we do not announce the keepalive records.
        rr->resrec.RecordType = kDNSRecordTypeKnownUnique;
        rr->AnnounceCount     = 0;
-       mDNSAddr   raddr;
        getKeepaliveRaddr(m, rr, &raddr);
        // This is an asynchronous call. Once the remote MAC address is available, helper will schedule an
        // asynchronous task to update the resource record
@@ -5530,6 +5530,7 @@ mDNSexport void mDNS_UpdateAllowSleep(mDNS *const m)
 {
 #ifndef IDLESLEEPCONTROL_DISABLED
     mDNSBool allowSleep = mDNStrue;
+	const CacheRecord *cr;
     char reason[128];
 
     reason[0] = 0;
@@ -5562,7 +5563,7 @@ mDNSexport void mDNS_UpdateAllowSleep(mDNS *const m)
                     }
 
                     // Disallow sleep if there is no sleep proxy server
-                    const CacheRecord *cr = FindSPSInCache1(m, &intf->NetWakeBrowse, mDNSNULL, mDNSNULL);
+                    cr = FindSPSInCache1(m, &intf->NetWakeBrowse, mDNSNULL, mDNSNULL);
                     if ( cr == mDNSNULL)
                     {
                         allowSleep = mDNSfalse;
@@ -9902,11 +9903,6 @@ mDNSlocal void mDNS_SendKeepalives(mDNS *const m)
 
 mDNSlocal void mDNS_SendKeepaliveACK(mDNS *const m, AuthRecord *ar)
 {
-    if (ar != mDNSNULL)
-    {
-        LogInfo("mDNS_SendKeepalivesACK: AuthRecord is NULL");
-        return;
-    }
     mDNSu32     timeout, seq, ack;
     mDNSu16     win;
     mDNSAddr    laddr, raddr;
@@ -9918,6 +9914,12 @@ mDNSlocal void mDNS_SendKeepaliveACK(mDNS *const m, AuthRecord *ar)
 
     laddr = raddr = zeroAddr;
     lport = rport = zeroIPPort;
+
+	if (ar != mDNSNULL)
+    {
+        LogInfo("mDNS_SendKeepalivesACK: AuthRecord is NULL");
+        return;
+    }
 
     mDNS_ExtractKeepaliveInfo(ar, &timeout, &laddr, &raddr, &eth, &seq, &ack, &lport, &rport, &win);
 
@@ -10088,6 +10090,9 @@ mDNSlocal void mDNSCoreReceiveUpdate(mDNS *const m,
 
 mDNSlocal void mDNSCoreReceiveUpdateR(mDNS *const m, const DNSMessage *const msg, const mDNSu8 *end, const mDNSAddr *srcaddr, const mDNSInterfaceID InterfaceID)
 {
+    mDNSAddr spsaddr;
+	char *ifname;
+
     if (InterfaceID)
     {
         mDNSu32 updatelease = 60 * 60;      // If SPS fails to indicate lease time, assume one hour
@@ -10141,8 +10146,7 @@ mDNSlocal void mDNSCoreReceiveUpdateR(mDNS *const m, const DNSMessage *const msg
         }
 
         // Update the dynamic store with the IP Address and MAC address of the sleep proxy
-        char *ifname = InterfaceNameForID(m, InterfaceID);
-        mDNSAddr spsaddr;
+        ifname = InterfaceNameForID(m, InterfaceID);
         mDNSPlatformMemCopy(&spsaddr, srcaddr, sizeof (mDNSAddr));
         mDNSPlatformStoreSPSMACAddr(&spsaddr, ifname);
     }
@@ -12446,6 +12450,7 @@ mDNSlocal void AdvertiseInterface(mDNS *const m, NetworkInterfaceInfo *set)
 {
     char buffer[MAX_REVERSE_MAPPING_NAME];
     NetworkInterfaceInfo *primary;
+	mDNSu8 recordType;
 
     if (!set->McastTxRx)
     {
@@ -12465,7 +12470,7 @@ mDNSlocal void AdvertiseInterface(mDNS *const m, NetworkInterfaceInfo *set)
 
     // If interface is marked as a direct link, we can assume the address record is unique
     // and does not need to go through the probe phase of the probe/announce packet sequence.
-    mDNSu8 recordType = (set->DirectLink ? kDNSRecordTypeKnownUnique : kDNSRecordTypeUnique);
+    recordType = (set->DirectLink ? kDNSRecordTypeKnownUnique : kDNSRecordTypeUnique);
 
     if (set->DirectLink)
         LogInfo("AdvertiseInterface: Marking address record as kDNSRecordTypeKnownUnique for %s", set->ifname);

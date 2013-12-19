@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+#ifdef TARGET_OS_ANDROID
+#include <fcntl.h>
+#endif
+
 // PosixNetworkInterface is a record extension of the core NetworkInterfaceInfo
 // type that supports extra fields needed by the Posix platform.
 //

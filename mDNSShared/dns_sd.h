@@ -93,7 +93,7 @@ extern "C" {
 /* standard calling convention under Win32 is __stdcall */
 /* Note: When compiling Intel EFI (Extensible Firmware Interface) under MS Visual Studio, the */
 /* _WIN32 symbol is defined by the compiler even though it's NOT compiling code for Windows32 */
-#if defined(_WIN32) && !defined(EFI32) && !defined(EFI64)
+#if defined(_WIN32) && !defined(EFI32) && !defined(EFI64) && !defined(DISC_BONJOUR_EMBED)
 #define DNSSD_API __stdcall
 #else
 #define DNSSD_API

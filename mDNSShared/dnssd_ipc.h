@@ -29,6 +29,11 @@
 #ifndef DNSSD_IPC_H
 #define DNSSD_IPC_H
 
+#ifdef TARGET_OS_ANDROID
+#include <sys/socket.h>
+#include <sys/un.h>
+#endif
+
 #include "dns_sd.h"
 
 //
