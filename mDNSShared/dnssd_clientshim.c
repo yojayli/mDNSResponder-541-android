@@ -32,7 +32,7 @@
 #include <winsock2.h>
 #endif
 
-extern mDNS mDNSStorage;        // We need to pass the address of this storage to the lower-layer functions
+mDNSexport mDNS mDNSStorage;        // We need to pass the address of this storage to the lower-layer functions
 
 #if MDNS_BUILDINGSHAREDLIBRARY || MDNS_BUILDINGSTUBLIBRARY
 #pragma export on

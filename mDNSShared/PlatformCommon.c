@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "DNSCommon.h"
 #include <stdio.h>              // Needed for fopen() etc.
 #include <unistd.h>             // Needed for close()
 #include <string.h>             // Needed for strlen() etc.
@@ -24,7 +25,6 @@
 #include <syslog.h>
 
 #include "mDNSEmbeddedAPI.h"    // Defines the interface provided to the client layer above
-#include "DNSCommon.h"
 #include "PlatformCommon.h"
 
 #ifdef TARGET_OS_ANDROID
