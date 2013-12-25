@@ -66,6 +66,20 @@ static DWORD    win32_if_nametoindex( const char * nameStr );
 
 //#include <syslog.h>
 
+#include "mDNSEmbeddedAPI.h" // Defines the interface to the mDNS core code
+#include "mDNSPosix.h"    // Defines the specific types needed to run mDNS on this platform
+#include "ExampleClientApp.h"
+#include <pthread.h>
+
+static pthread_t loop_pthread;
+// Globals
+mDNS mDNSStorage;       // mDNS core uses this to store its globals
+static mDNS_PlatformSupport PlatformStorage;  // Stores this platform's globals
+#define RR_CACHE_SIZE 500
+static CacheEntity gRRCache[RR_CACHE_SIZE];
+
+mDNSexport const char ProgramName[] = "mDNSClientPosix";
+
 // convenience definition
 #ifdef __GNUC__
 #define _UNUSED __attribute__ ((unused))
@@ -123,9 +137,32 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv
         (*pEnv)->SetStaticBooleanField( pEnv, cls, hasAutoCField, hasAutoC);
     }
 
+    embedded_mDNSstart();
+
     return kDNSServiceErr_NoError;
 }
 
+void* thread_loop(void *arg) {
+	LogMsg("thread_loop start");
+	ExampleClientEventLoop(&mDNSStorage);
+	LogMsg("thread_loop");
+}
+
+int embedded_mDNSstart() {
+	mStatus status;
+	status = mDNS_Init(&mDNSStorage, &PlatformStorage,
+		gRRCache, RR_CACHE_SIZE,
+		mDNS_Init_DontAdvertiseLocalAddresses,
+		mDNS_Init_NoInitCallback, mDNS_Init_NoInitCallbackContext);
+
+   if (status == mStatus_NoError) {
+		LogMsg("mDNS_Init");
+		pthread_create(&loop_pthread, NULL, thread_loop, NULL);
+	}else{
+		LogMsg("mDNS_Init %d", status);
+	}
+	return 1;
+}
 
 static const char*  SafeGetUTFChars( JNIEnv *pEnv, jstring str)
 // Wrapper for JNI GetStringUTFChars() that returns NULL for null str.
@@ -361,6 +398,7 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleBrowser_CreateBrowser( JNIEnv *
         if ( err == kDNSServiceErr_NoError)
         {
             (*pEnv)->SetLongField(pEnv, pThis, contextField, (long) pContext);
+        	//ExampleClientEventLoop(&mDNSStorage);
         }
 
         SafeReleaseUTFChars( pEnv, regType, regStr);

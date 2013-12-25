@@ -13,6 +13,7 @@ LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/mDNSCore 
 	
 LOCAL_CFLAGS :=  \
+	-DMDNS_DEBUGMSGS=2 \
 	-DTARGET_OS_ANDROID \
 	-DNOT_HAVE_SA_LEN -DUSES_NETLINK
 
@@ -47,7 +48,6 @@ LOCAL_SRC_FILES := \
     mDNSShared/dnssd_clientlib.c \
     mDNSShared/dnssd_clientshim.c \
     mDNSShared/Java/JNISupport.c \
-    mDNSPosix/ExampleClientApp.c \
-	mDNSPosix/Client.c
+    mDNSPosix/ExampleClientApp.c 
 
 include $(BUILD_SHARED_LIBRARY)
