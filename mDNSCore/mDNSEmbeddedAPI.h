@@ -1616,7 +1616,7 @@ struct AuthRecord_struct
 // Question (A or AAAA) that is suppressed currently because IPv4 or IPv6 address
 // is not available locally for A or AAAA question respectively. Also, if the
 // query is disallowed for the "pid" that we are sending on behalf of, suppress it.
-#define QuerySuppressed(Q) (((Q)->SuppressUnusable && (Q)->SuppressQuery) || ((Q)->DisallowPID))
+#define QuerySuppressed(Q) (((Q)->SuppressUnusable && (Q)->SuppressQuery))
 
 #define PrivateQuery(Q) ((Q)->AuthInfo && (Q)->AuthInfo->AutoTunnel)
 
