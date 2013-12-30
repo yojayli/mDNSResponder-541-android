@@ -109,6 +109,32 @@ struct  OpContext
 JavaVM      *gJavaVM = NULL;
 #endif
 
+#if !AUTO_CALLBACKS
+#ifdef TARGET_OS_ANDROID
+JavaVM      *gJavaVM = NULL;
+#endif
+
+static jclass class_com_apple_dnssd_TXTRecord = NULL;
+
+jint JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+	gJavaVM = vm;
+	JNIEnv *pEnv = NULL;
+	jint ret = JNI_ERR;
+	if ((*vm)->GetEnv(vm, (void**) &pEnv, JNI_VERSION_1_6) == JNI_OK) {
+		ret = JNI_VERSION_1_6;
+	}else if ((*vm)->GetEnv(vm, (void**) &pEnv, JNI_VERSION_1_4) == JNI_OK) {
+		ret = JNI_VERSION_1_4;
+	}
+
+	if(ret != JNI_ERR){
+		class_com_apple_dnssd_TXTRecord = (*pEnv)->FindClass( pEnv, "com/apple/dnssd/TXTRecord");
+		class_com_apple_dnssd_TXTRecord = (*pEnv)->NewGlobalRef( pEnv, class_com_apple_dnssd_TXTRecord);
+	}
+	return ret;
+}
+
+#endif
 
 JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv, jclass cls,
                                                                     jint callerVersion)
@@ -143,9 +169,7 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv
 }
 
 void* thread_loop(void *arg) {
-	LogMsg("thread_loop start");
 	ExampleClientEventLoop(&mDNSStorage);
-	LogMsg("thread_loop");
 }
 
 int embedded_mDNSstart() {
@@ -194,11 +218,17 @@ static void TeardownCallbackState( void )
 static void SetupCallbackState( JNIEnv **ppEnv _UNUSED)
 {
     // No setup necessary if ProcessResults() has been called
+#ifdef TARGET_OS_ANDROID
+	(*gJavaVM)->AttachCurrentThread( gJavaVM, (void**) ppEnv, NULL);
+#endif
 }
 
 static void TeardownCallbackState( void )
 {
     // No teardown necessary if ProcessResults() has been called
+#ifdef TARGET_OS_ANDROID
+	(*gJavaVM)->DetachCurrentThread( gJavaVM);
+#endif
 }
 #endif  // AUTO_CALLBACKS
 
@@ -398,7 +428,6 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleBrowser_CreateBrowser( JNIEnv *
         if ( err == kDNSServiceErr_NoError)
         {
             (*pEnv)->SetLongField(pEnv, pThis, contextField, (long) pContext);
-        	//ExampleClientEventLoop(&mDNSStorage);
         }
 
         SafeReleaseUTFChars( pEnv, regType, regStr);
@@ -424,7 +453,7 @@ static void DNSSD_API   ServiceResolveReply( DNSServiceRef sdRef _UNUSED, DNSSer
 
     SetupCallbackState( &pContext->Env);
 
-    txtCls = (*pContext->Env)->FindClass( pContext->Env, "com/apple/dnssd/TXTRecord");
+    txtCls = class_com_apple_dnssd_TXTRecord;
     txtCtor = (*pContext->Env)->GetMethodID( pContext->Env, txtCls, "<init>", "([B)V");
 
     if ( pContext->ClientObj != NULL && pContext->Callback != NULL && txtCtor != NULL &&
