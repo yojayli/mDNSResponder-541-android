@@ -29,7 +29,7 @@ setup := $(shell javah -force -classpath $(LOCAL_CLASS_PATH) -o $(LOCAL_PATH)/DN
 	com.apple.dnssd.AppleService \
 	com.apple.dnssd.AppleDNSRecord \
 	com.apple.dnssd.AppleRecordRegistrar \
-	com.apple.dnssd.EmbededMDNS \
+	com.apple.dnssd.DNSSDEmbedded \
 	)
 		
 $(setup)
@@ -49,6 +49,6 @@ LOCAL_SRC_FILES := \
     mDNSShared/dnssd_clientlib.c \
     mDNSShared/dnssd_clientshim.c \
     mDNSShared/Java/JNISupport.c \
-    mDNSCore/mDnsEmbedded.c
+    mDNSCore/mDNSEmbedded.c
 
 include $(BUILD_SHARED_LIBRARY)

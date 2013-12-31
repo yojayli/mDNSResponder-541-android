@@ -104,20 +104,18 @@ JavaVM      *gJavaVM = NULL;
 #ifdef TARGET_OS_ANDROID
 JNIEnv *pLoopEnv = NULL;
 
-JNIEXPORT jint JNICALL Java_com_apple_dnssd_EmbededMDNS_Init( JNIEnv *pEnv, jclass cls)
+JNIEXPORT jint JNICALL Java_com_apple_dnssd_DNSSDEmbedded_Init( JNIEnv *pEnv, jclass cls)
 {
-	int err = kDNSServiceErr_NoError;
 	pLoopEnv = pEnv;
-    embedded_mDNSInit();
-    return err;
+	return embedded_mDNSInit();
 }
 
-JNIEXPORT jint JNICALL Java_com_apple_dnssd_EmbededMDNS_State( JNIEnv *pEnv, jclass cls)
+JNIEXPORT void JNICALL Java_com_apple_dnssd_DNSSDEmbedded_Loop( JNIEnv *pEnv, jclass cls)
 {
-    return embedded_mDNSState();
+    embedded_mDNSLoop();
 }
 
-JNIEXPORT void JNICALL Java_com_apple_dnssd_EmbededMDNS_Exit( JNIEnv *pEnv, jclass cls)
+JNIEXPORT void JNICALL Java_com_apple_dnssd_DNSSDEmbedded_Exit( JNIEnv *pEnv, jclass cls)
 {
 	embedded_mDNSExit();
 }

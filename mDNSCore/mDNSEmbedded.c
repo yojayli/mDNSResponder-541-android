@@ -22,37 +22,24 @@ const char ProgramName[] = "mDNSClientPosix";
 int stopNow = 0;
 static int state = 0;
 
-void eventLoop(mDNS * const m);
-
-mDNSexport void embedded_mDNSInit() {
+mDNSexport int embedded_mDNSInit() {
 	mStatus status;
 	status = mDNS_Init(&mDNSStorage, &PlatformStorage, gRRCache, RR_CACHE_SIZE,
 	mDNS_Init_DontAdvertiseLocalAddresses,
 	mDNS_Init_NoInitCallback, mDNS_Init_NoInitCallbackContext);
-	if (status == mStatus_NoError) {
-		LogMsg("mDNS_Init");
-	}
-	eventLoop(&mDNSStorage);
-}
-
-mDNSexport int embedded_mDNSState() {
-	return state;
+	return status;
 }
 
 mDNSexport void embedded_mDNSExit() {
 	stopNow = 1;
-	while(state){
-		//wait
-		usleep(500);
-	}
-	mDNS_Close(&mDNSStorage);
 }
 
-void eventLoop(mDNS * const m) {
+mDNSexport void embedded_mDNSLoop() {
+	mDNS* m = &mDNSStorage;
 	stopNow = 0;
 	state = 1;
 	while (!stopNow) {
-		//LogMsg("ExampleClientEventLoop 1");
+		//LogMsg("embedded_mDNSLoop 1");
 		int nfds = 0;
 		fd_set readfds;
 		struct timeval timeout;
@@ -83,7 +70,7 @@ void eventLoop(mDNS * const m) {
 		}
 		else
 		{
-			//ogMsg("mDNSPosixProcessFDSet");
+			//LogMsg("mDNSPosixProcessFDSet");
 			// 5. Call mDNSPosixProcessFDSet to let the mDNSPosix layer do its work
 			mDNSPosixProcessFDSet(m, &readfds);
 
@@ -91,8 +78,9 @@ void eventLoop(mDNS * const m) {
 			// but a real client would do its work here
 			// ... (do work) ...
 		}
-		//LogMsg("ExampleClientEventLoop 3");
+		//LogMsg("embedded_mDNSLoop 2");
 	}
 	state = 0;
+	mDNS_Close(&mDNSStorage);
     //debugf("Exiting");
 }

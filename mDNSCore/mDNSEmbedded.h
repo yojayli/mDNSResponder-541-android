@@ -3,9 +3,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void embedded_mDNSInit();
-int embedded_mDNSState();
-void embedded_mDNSMainLoop();
+int embedded_mDNSInit();
+void embedded_mDNSLoop();
 void embedded_mDNSExit();
 #ifdef __cplusplus
 }
