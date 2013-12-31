@@ -68,17 +68,9 @@ static DWORD    win32_if_nametoindex( const char * nameStr );
 
 #include "mDNSEmbeddedAPI.h" // Defines the interface to the mDNS core code
 #include "mDNSPosix.h"    // Defines the specific types needed to run mDNS on this platform
-#include "ExampleClientApp.h"
-#include <pthread.h>
+#include "mDnsEmbedded.h"
 
-static pthread_t loop_pthread;
-// Globals
-mDNS mDNSStorage;       // mDNS core uses this to store its globals
-static mDNS_PlatformSupport PlatformStorage;  // Stores this platform's globals
-#define RR_CACHE_SIZE 500
-static CacheEntity gRRCache[RR_CACHE_SIZE];
-
-mDNSexport const char ProgramName[] = "mDNSClientPosix";
+mDNSexport mDNS mDNSStorage;
 
 // convenience definition
 #ifdef __GNUC__
@@ -115,6 +107,7 @@ JavaVM      *gJavaVM = NULL;
 #endif
 
 static jclass class_com_apple_dnssd_TXTRecord = NULL;
+JNIEnv *pLoopEnv = NULL;
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
@@ -132,6 +125,24 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 		class_com_apple_dnssd_TXTRecord = (*pEnv)->NewGlobalRef( pEnv, class_com_apple_dnssd_TXTRecord);
 	}
 	return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_apple_dnssd_EmbededMDNS_Init( JNIEnv *pEnv, jclass cls)
+{
+	int err = kDNSServiceErr_NoError;
+	pLoopEnv = pEnv;
+    embedded_mDNSInit();
+    return err;
+}
+
+JNIEXPORT jint JNICALL Java_com_apple_dnssd_EmbededMDNS_State( JNIEnv *pEnv, jclass cls)
+{
+    return embedded_mDNSState();
+}
+
+JNIEXPORT void JNICALL Java_com_apple_dnssd_EmbededMDNS_Exit( JNIEnv *pEnv, jclass cls)
+{
+	embedded_mDNSExit();
 }
 
 #endif
@@ -162,30 +173,7 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv
         jfieldID hasAutoCField = (*pEnv)->GetStaticFieldID( pEnv, cls, "hasAutoCallbacks", "Z");
         (*pEnv)->SetStaticBooleanField( pEnv, cls, hasAutoCField, hasAutoC);
     }
-
-    embedded_mDNSstart();
-
     return kDNSServiceErr_NoError;
-}
-
-void* thread_loop(void *arg) {
-	ExampleClientEventLoop(&mDNSStorage);
-}
-
-int embedded_mDNSstart() {
-	mStatus status;
-	status = mDNS_Init(&mDNSStorage, &PlatformStorage,
-		gRRCache, RR_CACHE_SIZE,
-		mDNS_Init_DontAdvertiseLocalAddresses,
-		mDNS_Init_NoInitCallback, mDNS_Init_NoInitCallbackContext);
-
-   if (status == mStatus_NoError) {
-		LogMsg("mDNS_Init");
-		pthread_create(&loop_pthread, NULL, thread_loop, NULL);
-	}else{
-		LogMsg("mDNS_Init %d", status);
-	}
-	return 1;
 }
 
 static const char*  SafeGetUTFChars( JNIEnv *pEnv, jstring str)
@@ -218,17 +206,11 @@ static void TeardownCallbackState( void )
 static void SetupCallbackState( JNIEnv **ppEnv _UNUSED)
 {
     // No setup necessary if ProcessResults() has been called
-#ifdef TARGET_OS_ANDROID
-	(*gJavaVM)->AttachCurrentThread( gJavaVM, (void**) ppEnv, NULL);
-#endif
 }
 
 static void TeardownCallbackState( void )
 {
     // No teardown necessary if ProcessResults() has been called
-#ifdef TARGET_OS_ANDROID
-	(*gJavaVM)->DetachCurrentThread( gJavaVM);
-#endif
 }
 #endif  // AUTO_CALLBACKS
 
