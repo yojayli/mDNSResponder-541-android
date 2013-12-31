@@ -25,7 +25,7 @@ static int state = 0;
 mDNSexport int embedded_mDNSInit() {
 	mStatus status;
 	status = mDNS_Init(&mDNSStorage, &PlatformStorage, gRRCache, RR_CACHE_SIZE,
-	mDNS_Init_DontAdvertiseLocalAddresses,
+	mDNS_Init_AdvertiseLocalAddresses,
 	mDNS_Init_NoInitCallback, mDNS_Init_NoInitCallbackContext);
 	return status;
 }
@@ -66,10 +66,9 @@ mDNSexport void embedded_mDNSLoop() {
 
 		if (result < 0) {
 			//verbosedebugf( "select() returned %d errno %d", result, errno);
-			if (errno != EINTR) stopNow = 1;
-		}
-		else
-		{
+			if (errno != EINTR)
+				stopNow = 1;
+		} else {
 			//LogMsg("mDNSPosixProcessFDSet");
 			// 5. Call mDNSPosixProcessFDSet to let the mDNSPosix layer do its work
 			mDNSPosixProcessFDSet(m, &readfds);
@@ -82,5 +81,5 @@ mDNSexport void embedded_mDNSLoop() {
 	}
 	state = 0;
 	mDNS_Close(&mDNSStorage);
-    //debugf("Exiting");
+	//debugf("Exiting");
 }
