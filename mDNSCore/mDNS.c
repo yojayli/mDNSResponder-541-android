@@ -8727,7 +8727,11 @@ mDNSlocal void mDNSCoreReceiveResponse(mDNS *const m,
 {
     int i;
     mDNSBool myself;
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+    mDNSBool ResponseMCast    = dstaddr;
+#else
     mDNSBool ResponseMCast    = dstaddr && mDNSAddrIsDNSMulticast(dstaddr);
+#endif
     mDNSBool ResponseSrcLocal = !srcaddr || mDNS_AddressIsLocalSubnet(m, InterfaceID, srcaddr, &myself);
     DNSQuestion *llqMatch = mDNSNULL;
     DNSQuestion *unicastQuestion = mDNSNULL;

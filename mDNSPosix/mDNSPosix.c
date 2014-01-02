@@ -184,6 +184,20 @@ mDNSexport mStatus mDNSPlatformSendUDP(const mDNS *const m, const void *const ms
     }
 #endif
 
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+    if (sendingsocket >= 0)
+	{
+		int so_broadcast = 1;
+		setsockopt(sendingsocket, SOL_SOCKET, SO_BROADCAST, &so_broadcast, sizeof(sendingsocket));
+		struct sockaddr_in boradcast_addr;
+		boradcast_addr.sin_family = AF_INET;
+		boradcast_addr.sin_port = dstPort.NotAnInteger;
+		boradcast_addr.sin_addr.s_addr = thisIntf->coreIntf.broadcast.ip.v4.NotAnInteger;
+		//LogInfo("mDNSPlatformSendUDP to broadcast %#a ", &thisIntf->coreIntf.broadcast);
+		sendto(sendingsocket, msg, (char*)end - (char*)msg, 0, (struct sockaddr *)&boradcast_addr, GET_SA_LEN(boradcast_addr));
+	}
+#endif
+
     if (sendingsocket >= 0)
         err = sendto(sendingsocket, msg, (char*)end - (char*)msg, 0, (struct sockaddr *)&to, GET_SA_LEN(to));
 
@@ -822,7 +836,11 @@ mDNSlocal int SetupSocket(struct sockaddr *intfAddr, mDNSIPPort port, int interf
 
 // Creates a PosixNetworkInterface for the interface whose IP address is
 // intfAddr and whose name is intfName and registers it with mDNS core.
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+mDNSlocal int SetupOneInterface(mDNS *const m, struct sockaddr *intfAddr, struct sockaddr *intfMask, struct sockaddr *intfBroadcast, const char *intfName, int intfIndex)
+#else
 mDNSlocal int SetupOneInterface(mDNS *const m, struct sockaddr *intfAddr, struct sockaddr *intfMask, const char *intfName, int intfIndex)
+#endif
 {
     int err = 0;
     PosixNetworkInterface *intf;
@@ -849,7 +867,14 @@ mDNSlocal int SetupOneInterface(mDNS *const m, struct sockaddr *intfAddr, struct
         // Set up the fields required by the mDNS core.
         SockAddrTomDNSAddr(intfAddr, &intf->coreIntf.ip, NULL);
         SockAddrTomDNSAddr(intfMask, &intf->coreIntf.mask, NULL);
-
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+        if(intfBroadcast != NULL) {
+        	debugf("intfBroadcast is not NULL");
+        	SockAddrTomDNSAddr(intfBroadcast, &intf->coreIntf.broadcast, NULL);
+        }else{
+        	debugf("intfBroadcast is NULL");
+        }
+#endif
         //LogMsg("SetupOneInterface: %#a %#a",  &intf->coreIntf.ip,  &intf->coreIntf.mask);
         strncpy(intf->coreIntf.ifname, intfName, sizeof(intf->coreIntf.ifname));
         intf->coreIntf.ifname[sizeof(intf->coreIntf.ifname)-1] = 0;
@@ -950,7 +975,11 @@ mDNSlocal int SetupInterfaceList(mDNS *const m)
                 }
                 else
                 {
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+                    if (SetupOneInterface(m, i->ifi_addr, i->ifi_netmask, i->ifi_brdaddr, i->ifi_name, i->ifi_index) == 0)
+#else
                     if (SetupOneInterface(m, i->ifi_addr, i->ifi_netmask, i->ifi_name, i->ifi_index) == 0)
+#endif
                         if (i->ifi_addr->sa_family == AF_INET)
                             foundav4 = mDNStrue;
                 }
@@ -964,7 +993,11 @@ mDNSlocal int SetupInterfaceList(mDNS *const m)
         // In the interim, we skip loopback interface only if we found at least one v4 interface to use
         // if ((m->HostInterfaces == NULL) && (firstLoopback != NULL))
         if (!foundav4 && firstLoopback)
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+            (void) SetupOneInterface(m, firstLoopback->ifi_addr, firstLoopback->ifi_netmask,  firstLoopback->ifi_brdaddr, firstLoopback->ifi_name, firstLoopback->ifi_index);
+#else
             (void) SetupOneInterface(m, firstLoopback->ifi_addr, firstLoopback->ifi_netmask, firstLoopback->ifi_name, firstLoopback->ifi_index);
+#endif
     }
 
     // Clean up.

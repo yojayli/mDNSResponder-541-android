@@ -2134,6 +2134,9 @@ struct NetworkInterfaceInfo_struct
     mDNSInterfaceID InterfaceID;        // Identifies physical interface; MUST NOT be 0, -1, or -2
     mDNSAddr ip;                        // The IPv4 or IPv6 address to advertise
     mDNSAddr mask;
+#if (defined(USES_BROADCAST_AND_MULTICAST))
+    mDNSAddr broadcast;
+#endif
     mDNSEthAddr MAC;
     char ifname[64];                    // Windows uses a GUID string for the interface name, which doesn't fit in 16 bytes
     mDNSu8 Advertise;                   // False if you are only searching on this interface
