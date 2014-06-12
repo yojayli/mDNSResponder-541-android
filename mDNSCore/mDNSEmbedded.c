@@ -78,6 +78,9 @@ mDNSexport void embedded_mDNSLoop() {
 			// ... (do work) ...
 		}
 		//LogMsg("embedded_mDNSLoop 2");
+	    sigset_t signals;
+		mDNSBool gotSomething;
+		mDNSPosixRunEventLoopOnce(m, &timeout, &signals, &gotSomething);
 	}
 	state = 0;
 	mDNS_Close(&mDNSStorage);

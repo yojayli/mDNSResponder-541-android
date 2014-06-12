@@ -1111,6 +1111,11 @@ mDNSlocal mDNSu32       ProcessRoutingNotification(int sd)
         else if (pNLMsg->nlmsg_type == RTM_DELADDR || pNLMsg->nlmsg_type == RTM_NEWADDR)
             result |= 1 << ((struct ifaddrmsg*) NLMSG_DATA(pNLMsg))->ifa_index;
 
+        if (pNLMsg->nlmsg_type == RTM_DELADDR || pNLMsg->nlmsg_type == RTM_NEWADDR){
+            LogMsg("address changed", result);
+        	result = 1;
+        }
+
         // Advance pNLMsg to the next message in the buffer
         if ((pNLMsg->nlmsg_flags & NLM_F_MULTI) != 0 && pNLMsg->nlmsg_type != NLMSG_DONE)
         {
