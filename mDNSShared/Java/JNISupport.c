@@ -25,8 +25,12 @@
 // (Invoking callbacks automatically on a different thread sounds attractive, but while
 // the client gains by not needing to add an event source to its main event loop, it loses
 // by being forced to deal with concurrency and locking, which can be a bigger burden.)
+#ifdef TARGET_OS_ANDROID
+#define AUTO_CALLBACKS  1
+#else
 #ifndef AUTO_CALLBACKS
 #define AUTO_CALLBACKS  0
+#endif
 #endif
 
 #if !AUTO_CALLBACKS
@@ -98,10 +102,9 @@ struct  OpContext
 
 // For AUTO_CALLBACKS, we must attach the callback thread to the Java VM prior to upcall.
 #if AUTO_CALLBACKS
+#ifndef TARGET_OS_ANDROID
 JavaVM      *gJavaVM = NULL;
-#endif
-
-#ifdef TARGET_OS_ANDROID
+#else
 JNIEnv *pLoopEnv = NULL;
 
 JNIEXPORT jint JNICALL Java_com_apple_dnssd_DNSSDEmbedded_Init( JNIEnv *pEnv, jclass cls)
@@ -119,7 +122,7 @@ JNIEXPORT void JNICALL Java_com_apple_dnssd_DNSSDEmbedded_Exit( JNIEnv *pEnv, jc
 {
 	embedded_mDNSExit();
 }
-
+#endif
 #endif
 
 JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv, jclass cls,
@@ -130,12 +133,14 @@ JNIEXPORT jint JNICALL Java_com_apple_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv
         return kDNSServiceErr_Incompatible;
 
 #if AUTO_CALLBACKS
+#ifndef TARGET_OS_ANDROID
     {
         jsize numVMs;
 
         if ( 0 != JNI_GetCreatedJavaVMs( &gJavaVM, 1, &numVMs))
             return kDNSServiceErr_BadState;
     }
+#endif
 #endif
 
     // Set AppleDNSSD.hasAutoCallbacks
@@ -168,12 +173,18 @@ static void         SafeReleaseUTFChars( JNIEnv *pEnv, jstring str, const char *
 #if AUTO_CALLBACKS
 static void SetupCallbackState( JNIEnv **ppEnv)
 {
+#ifndef TARGET_OS_ANDROID
     (*gJavaVM)->AttachCurrentThread( gJavaVM, (void**) ppEnv, NULL);
+#else
+	(*ppEnv) = pLoopEnv;
+#endif
 }
 
 static void TeardownCallbackState( void )
 {
+#ifndef TARGET_OS_ANDROID
     (*gJavaVM)->DetachCurrentThread( gJavaVM);
+#endif
 }
 
 #else   // AUTO_CALLBACKS
@@ -181,9 +192,6 @@ static void TeardownCallbackState( void )
 static void SetupCallbackState( JNIEnv **ppEnv _UNUSED)
 {
     // No setup necessary if ProcessResults() has been called
-#ifdef TARGET_OS_ANDROID
-	(*ppEnv) = pLoopEnv;
-#endif
 }
 
 static void TeardownCallbackState( void )
