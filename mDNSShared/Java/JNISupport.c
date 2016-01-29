@@ -231,7 +231,7 @@ static void         ReportError( JNIEnv *pEnv, jobject target, jobject service, 
     jclass cls = (*pEnv)->GetObjectClass( pEnv, target);
     jmethodID opFailed = (*pEnv)->GetMethodID( pEnv, cls, "operationFailed",
                                                "(Lcom/apple/dnssd/DNSSDService;I)V");
-
+    (*pEnv)->DeleteLocalRef( pEnv, cls);
     (*pEnv)->CallVoidMethod( pEnv, target, opFailed, service, err);
 }
 
@@ -355,12 +355,15 @@ static void DNSSD_API   ServiceBrowseReply( DNSServiceRef sdRef _UNUSED, DNSServ
     {
         if ( errorCode == kDNSServiceErr_NoError)
         {
+            JNIEnv *pEnv = pContext->Env;
+            (*pEnv)->PushLocalFrame( pEnv, 3);
             (*pContext->Env)->CallVoidMethod( pContext->Env, pContext->ClientObj,
                                               ( flags & kDNSServiceFlagsAdd) != 0 ? pContext->Callback : pContext->Callback2,
                                               pContext->JavaObj, flags, interfaceIndex,
                                               (*pContext->Env)->NewStringUTF( pContext->Env, serviceName),
                                               (*pContext->Env)->NewStringUTF( pContext->Env, regtype),
                                               (*pContext->Env)->NewStringUTF( pContext->Env, replyDomain));
+            (*pEnv)->PopLocalFrame( pEnv, NULL);
         }
         else
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
@@ -418,8 +421,10 @@ static void DNSSD_API   ServiceResolveReply( DNSServiceRef sdRef _UNUSED, DNSSer
     jbyteArray txtBytes;
     jobject txtObj;
     jbyte           *pBytes;
+    JNIEnv *pEnv;
 
     SetupCallbackState( &pContext->Env);
+    pEnv = pContext->Env;
 
     txtCls = (*pContext->Env)->FindClass( pContext->Env, "com/apple/dnssd/TXTRecord");
     txtCtor = (*pContext->Env)->GetMethodID( pContext->Env, txtCls, "<init>", "([B)V");
@@ -442,16 +447,20 @@ static void DNSSD_API   ServiceResolveReply( DNSServiceRef sdRef _UNUSED, DNSSer
             txtObj = (*pContext->Env)->NewObject( pContext->Env, txtCls, txtCtor, txtBytes);
             (*pContext->Env)->DeleteLocalRef( pContext->Env, txtBytes);
 
+            (*pEnv)->PushLocalFrame( pEnv, 2);
             (*pContext->Env)->CallVoidMethod( pContext->Env, pContext->ClientObj, pContext->Callback,
                                               pContext->JavaObj, flags, interfaceIndex,
                                               (*pContext->Env)->NewStringUTF( pContext->Env, fullname),
                                               (*pContext->Env)->NewStringUTF( pContext->Env, hosttarget),
                                               port, txtObj);
+            (*pEnv)->PopLocalFrame( pEnv, NULL);
+            (*pEnv)->DeleteLocalRef( pEnv, txtObj);
         }
         else
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
     }
 
+    (*pEnv)->DeleteLocalRef( pEnv, txtCls);
     TeardownCallbackState();
 }
 
@@ -505,11 +514,14 @@ static void DNSSD_API   ServiceRegisterReply( DNSServiceRef sdRef _UNUSED, DNSSe
     {
         if ( errorCode == kDNSServiceErr_NoError)
         {
+            JNIEnv *pEnv = pContext->Env;
+            (*pEnv)->PushLocalFrame( pEnv, 3);
             (*pContext->Env)->CallVoidMethod( pContext->Env, pContext->ClientObj, pContext->Callback,
                                               pContext->JavaObj, flags,
                                               (*pContext->Env)->NewStringUTF( pContext->Env, serviceName),
                                               (*pContext->Env)->NewStringUTF( pContext->Env, regType),
                                               (*pContext->Env)->NewStringUTF( pContext->Env, domain));
+            (*pEnv)->PopLocalFrame( pEnv, NULL);
         }
         else
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
@@ -712,8 +724,10 @@ static void DNSSD_API   RegisterRecordReply( DNSServiceRef sdRef _UNUSED,
 {
     RecordRegistrationRef   *regEnvelope = (RecordRegistrationRef*) context;
     OpContext       *pContext = regEnvelope->Context;
+    JNIEnv *pEnv;
 
     SetupCallbackState( &pContext->Env);
+    pEnv = pContext->Env;
 
     if ( pContext->ClientObj != NULL && pContext->Callback != NULL)
     {
@@ -726,7 +740,7 @@ static void DNSSD_API   RegisterRecordReply( DNSServiceRef sdRef _UNUSED,
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
     }
 
-    (*pContext->Env)->DeleteWeakGlobalRef( pContext->Env, regEnvelope->RecordObj);
+    (*pEnv)->DeleteWeakGlobalRef( pEnv, regEnvelope->RecordObj);
     free( regEnvelope);
 
     TeardownCallbackState();
@@ -794,8 +808,10 @@ static void DNSSD_API   ServiceQueryReply( DNSServiceRef sdRef _UNUSED, DNSServi
     OpContext       *pContext = (OpContext*) context;
     jbyteArray rDataObj;
     jbyte           *pBytes;
+    JNIEnv *pEnv;
 
     SetupCallbackState( &pContext->Env);
+    pEnv = pContext->Env;
 
     if ( pContext->ClientObj != NULL && pContext->Callback != NULL &&
          NULL != ( rDataObj = (*pContext->Env)->NewByteArray( pContext->Env, rdlen)))
@@ -807,13 +823,17 @@ static void DNSSD_API   ServiceQueryReply( DNSServiceRef sdRef _UNUSED, DNSServi
             memcpy( pBytes, rdata, rdlen);
             (*pContext->Env)->ReleaseByteArrayElements( pContext->Env, rDataObj, pBytes, JNI_COMMIT);
 
+            (*pEnv)->PushLocalFrame( pEnv, 1);
             (*pContext->Env)->CallVoidMethod( pContext->Env, pContext->ClientObj, pContext->Callback,
                                               pContext->JavaObj, flags, interfaceIndex,
                                               (*pContext->Env)->NewStringUTF( pContext->Env, serviceName),
                                               rrtype, rrclass, rDataObj, ttl);
+            (*pEnv)->PopLocalFrame( pEnv, NULL);
         }
         else
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
+
+        (*pEnv)->DeleteLocalRef( pEnv, rDataObj);
     }
     TeardownCallbackState();
 }
@@ -863,10 +883,13 @@ static void DNSSD_API   DomainEnumReply( DNSServiceRef sdRef _UNUSED, DNSService
     {
         if ( errorCode == kDNSServiceErr_NoError)
         {
+            JNIEnv *pEnv = pContext->Env;
+            (*pEnv)->PushLocalFrame( pEnv, 1);
             (*pContext->Env)->CallVoidMethod( pContext->Env, pContext->ClientObj,
                                               ( flags & kDNSServiceFlagsAdd) != 0 ? pContext->Callback : pContext->Callback2,
                                               pContext->JavaObj, flags, interfaceIndex,
                                               (*pContext->Env)->NewStringUTF( pContext->Env, replyDomain));
+            (*pEnv)->PopLocalFrame( pEnv, NULL);
         }
         else
             ReportError( pContext->Env, pContext->ClientObj, pContext->JavaObj, errorCode);
